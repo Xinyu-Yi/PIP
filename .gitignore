@@ -3,3 +3,4 @@ venv/
 data/*
 !data/figures
 models/
+__pycache__/
