@@ -38,7 +38,7 @@ class PIP(torch.nn.Module):
                         num_rnn_layer=2,
                         dropout=0.4)
 
-        body_model = art.ParametricModel('models/SMPL_male.pkl')
+        body_model = art.ParametricModel(paths.smpl_file)
         self.inverse_kinematics_R = body_model.inverse_kinematics_R
         self.forward_kinematics = body_model.forward_kinematics
         self.dynamics_optimizer = PhysicsOptimizer(debug=False)
