@@ -9,6 +9,7 @@ __all__ = ['ParametricModel']
 import os
 import pickle
 import torch
+import tqdm
 import numpy as np
 from . import math as M
 
@@ -326,3 +327,92 @@ class ParametricModel:
             tran = tran_list[i].view(-1, 3) - tran_list[i].view(-1, 3)[:1] if tran_list else None
             verts.append(self.forward_kinematics(pose, tran=tran, calc_mesh=True)[2])
         self.view_mesh(verts, fps, distance_between_subjects=distance_between_subjects)
+
+    def view_mesh_overlay(self, verts, images, K, Tcw=torch.eye(4), fps=60):
+        r"""
+        View model mesh overlay (single frame or a sequence).
+        Warning: open3d has bugs. This function may not run correctly.
+
+        Notes
+        -----
+        If num_frame == 1, only show one picture.
+
+        Args
+        -----
+        :param verts: Tensor that can reshape to [num_frame, num_vertex, 3].
+        :param images: Numpy uint8 array that can expand to [num_frame, height, width, 3].
+        :param K: Camera intrinsic tensor in shape [3, 3].
+        :param Tcw: Camera extrinsic tensor in shape [4, 4].
+        :param fps: Sequence FPS.
+        """
+        import vctoolkit.viso3d as vo3d
+        import cv2
+
+        verts = verts.cpu().view(-1, self._v_template.shape[0], 3).numpy()
+        images = np.broadcast_to(images, (verts.shape[0], images.shape[-3], images.shape[-2], 3))
+
+        param = vo3d.o3d.camera.PinholeCameraParameters()
+        param.intrinsic = vo3d.o3d.camera.PinholeCameraIntrinsic()
+        param.intrinsic.intrinsic_matrix = K.numpy()
+        param.extrinsic = Tcw.numpy()
+
+        viewer = vo3d.o3d.visualization.Visualizer()
+        viewer.create_window(width=images.shape[-2], height=images.shape[-3], visible=False)
+        mesh = vo3d.create_o3d_mesh(verts[0], self.face)
+        viewer.add_geometry(mesh)
+        view_control = viewer.get_view_control()
+        view_control.convert_from_pinhole_camera_parameters(param, allow_arbitrary=True)
+        viewer.get_render_option().background_color = [0, 0, 0]
+        padw = images.shape[-2] - view_control.convert_to_pinhole_camera_parameters().intrinsic.width
+        padh = images.shape[-3] - view_control.convert_to_pinhole_camera_parameters().intrinsic.height
+        assert padw >= 0 and padh >= 0
+        wb, we = padw // 2, images.shape[-2] + padw // 2 - padw
+        hb, he = padh // 2, images.shape[-3] + padh // 2 - padh
+
+        if len(verts) == 1:
+            viewer.poll_events()
+            viewer.update_renderer()
+            frame = (np.asarray(viewer.capture_screen_float_buffer()) * 255).astype(np.uint8)
+            mask = np.tile(frame.astype(np.bool8).max(axis=2, keepdims=True), (1, 1, 3))
+            im = images[0].copy()
+            im[hb:he, wb:we][mask] = frame[mask]
+            cv2.imshow('overlay', im)
+            cv2.waitKey(0)
+        else:
+            writer = cv2.VideoWriter('a.avi', cv2.VideoWriter_fourcc(*'MJPG'), fps, (images[0].shape[1], images[0].shape[0]))
+            for i in tqdm.trange(len(verts)):
+                mesh.vertices = vo3d.o3d.utility.Vector3dVector(verts[i])
+                mesh.compute_vertex_normals()
+                viewer.update_geometry(mesh)
+                viewer.poll_events()
+                viewer.update_renderer()
+                frame = (np.asarray(viewer.capture_screen_float_buffer()) * 255).astype(np.uint8)
+                mask = np.tile(frame.astype(np.bool8).max(axis=2, keepdims=True), (1, 1, 3))
+                im = images[i].copy()
+                im[hb:he, wb:we][mask] = frame[mask]
+                cv2.imshow('overlay', im)
+                cv2.waitKey(1)
+                writer.write(im)
+            writer.release()
+        cv2.destroyWindow('overlay')
+
+    def view_motion_overlay(self, pose, tran, images, K, Tcw=torch.eye(4), fps=60):
+        r"""
+        View model motion (poses and translations) overlay (single frame or a sequence).
+        Warning: open3d has bugs. This function may not run correctly.
+
+        Notes
+        -----
+        If num_frame == 1, only show one picture.
+
+        Args
+        -----
+        :param pose: Tensor that can reshape to [num_frame, num_joint, 3, 3].
+        :param tran: Tensor that can reshape to [num_frame, 3].
+        :param images: Numpy uint8 array that can expand to [num_frame, height, width, 3].
+        :param K: Camera intrinsic tensor in shape [3, 3].
+        :param Tcw: Camera extrinsic tensor in shape [4, 4].
+        :param fps: Sequence FPS.
+        """
+        verts = self.forward_kinematics(pose.view(-1, len(self._J), 3, 3), tran=tran.view(-1, 3), calc_mesh=True)[2]
+        self.view_mesh_overlay(verts, images, K, Tcw, fps)

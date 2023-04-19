@@ -156,18 +156,25 @@ class PerJointErrorEvaluator(BasePoseEvaluator):
     r"""
     Position and local/global rotation error of each joint.
     """
-    def __init__(self, official_model_file: str, align_joint=None, rep=RotationRepresentation.ROTATION_MATRIX,
+    def __init__(self, official_model_file: str, align_joint=0, rep=RotationRepresentation.ROTATION_MATRIX,
                  device=torch.device('cpu')):
         r"""
         Init a PJE Evaluator.
 
         :param official_model_file: Path to the official SMPL/MANO/SMPLH model to be loaded.
-        :param align_joint: Which joint to align. (e.g. SMPLJoint.ROOT). By default the root.
+        :param align_joint: Which joint to align. (e.g. SMPLJoint.ROOT or 0). By default the root (i.e., 0).
+                            align_joint >= 0, only the position of the specified joint is aligned;
+                            align_joint = -1, perform R/t/s alignment;
+                            align_joint = -2, perform R/t alignment;
+                            align_joint = -3, perform t/s alignment;
+                            align_joint = -4, perform t alignment;
+                            align_joint = -5, perform s alignment.
+                            Note that the alignment does not affect the rotation error.
         :param rep: The rotation representation used in the input poses.
         :param device: torch.device, cpu or cuda.
         """
         super().__init__(official_model_file, rep, device=device)
-        self.align_joint = 0 if align_joint is None else align_joint.value
+        self.align_joint = align_joint if isinstance(align_joint, int) else align_joint.value
 
     def __call__(self, pose_p: torch.Tensor, pose_t: torch.Tensor):
         r"""
@@ -185,8 +192,21 @@ class PerJointErrorEvaluator(BasePoseEvaluator):
         pose_local_t, _, _ = self._preprocess(pose_t)
         pose_global_p, joint_p = self.model.forward_kinematics(pose_local_p)
         pose_global_t, joint_t = self.model.forward_kinematics(pose_local_t)
-        offset_from_p_to_t = (joint_t[:, self.align_joint] - joint_p[:, self.align_joint]).unsqueeze(1)
-        joint_p = joint_p + offset_from_p_to_t
+        if self.align_joint >= 0:
+            offset_from_p_to_t = (joint_t[:, self.align_joint] - joint_p[:, self.align_joint]).unsqueeze(1)
+            joint_p = joint_p + offset_from_p_to_t
+        elif self.align_joint == -1:
+            joint_p = svd_rotate(joint_p, joint_t, calc_R=True, calc_t=True, calc_s=True)[3]
+        elif self.align_joint == -2:
+            joint_p = svd_rotate(joint_p, joint_t, calc_R=True, calc_t=True, calc_s=False)[3]
+        elif self.align_joint == -3:
+            joint_p = svd_rotate(joint_p, joint_t, calc_R=False, calc_t=True, calc_s=True)[3]
+        elif self.align_joint == -4:
+            joint_p = svd_rotate(joint_p, joint_t, calc_R=False, calc_t=True, calc_s=False)[3]
+        elif self.align_joint == -5:
+            joint_p = svd_rotate(joint_p, joint_t, calc_R=False, calc_t=False, calc_s=True)[3]
+        else:
+            raise RuntimeError('Undefined align_joint=%d' % self.align_joint)
         position_error_array = (joint_p - joint_t).norm(dim=2).mean(dim=0)
         local_rotation_error_array = angle_between(pose_local_p, pose_local_t).view(batch_size, -1).mean(dim=0)
         global_rotation_error_array = angle_between(pose_global_p, pose_global_t).view(batch_size, -1).mean(dim=0)
@@ -199,13 +219,20 @@ class MeanPerJointErrorEvaluator(PerJointErrorEvaluator):
     r"""
     Mean position and local/global rotation error of all joints.
     """
-    def __init__(self, official_model_file: str, align_joint=None, rep=RotationRepresentation.ROTATION_MATRIX,
+    def __init__(self, official_model_file: str, align_joint=0, rep=RotationRepresentation.ROTATION_MATRIX,
                  device=torch.device('cpu')):
         r"""
         Init a MPJE Evaluator.
 
         :param official_model_file: Path to the official SMPL/MANO/SMPLH model to be loaded.
-        :param align_joint: Which joint to align. (e.g. SMPLJoint.ROOT). By default the root.
+        :param align_joint: Which joint to align. (e.g. SMPLJoint.ROOT or 0). By default the root (i.e., 0).
+                            align_joint >= 0, only the position of the specified joint is aligned;
+                            align_joint = -1, perform R/t/s alignment;
+                            align_joint = -2, perform R/t alignment;
+                            align_joint = -3, perform t/s alignment;
+                            align_joint = -4, perform t alignment;
+                            align_joint = -5, perform s alignment.
+                            Note that the alignment does not affect the rotation error.
         :param rep: The rotation representation used in the input poses.
         :param device: torch.device, cpu or cuda.
         """
@@ -230,19 +257,26 @@ class MeshErrorEvaluator(BasePoseEvaluator):
     r"""
     Mean mesh vertex position error.
     """
-    def __init__(self, official_model_file: str, align_joint=None, rep=RotationRepresentation.ROTATION_MATRIX,
+    def __init__(self, official_model_file: str, align_joint=0, rep=RotationRepresentation.ROTATION_MATRIX,
                  use_pose_blendshape=False, device=torch.device('cpu')):
         r"""
         Init a mesh error evaluator.
 
         :param official_model_file: Path to the official SMPL/MANO/SMPLH model to be loaded.
-        :param align_joint: Which joint to align. (e.g. SMPLJoint.ROOT). By default the root.
+        :param align_joint: Which joint to align. (e.g. SMPLJoint.ROOT or 0). By default the root (i.e., 0).
+                            align_joint >= 0, only the position of the specified joint is aligned;
+                            align_joint = -1, perform R/t/s alignment;
+                            align_joint = -2, perform R/t alignment;
+                            align_joint = -3, perform t/s alignment;
+                            align_joint = -4, perform t alignment;
+                            align_joint = -5, perform s alignment.
+                            Note that the alignment does not affect the rotation error.
         :param rep: The rotation representation used in the input poses.
         :param use_pose_blendshape: Whether to use pose blendshape or not.
         :param device: torch.device, cpu or cuda.
         """
         super().__init__(official_model_file, rep, use_pose_blendshape, device=device)
-        self.align_joint = 0 if align_joint is None else align_joint.value
+        self.align_joint = align_joint if isinstance(align_joint, int) else align_joint.value
 
     def __call__(self, pose_p: torch.Tensor, pose_t: torch.Tensor,
                  shape_p: torch.Tensor = None, shape_t: torch.Tensor = None):
@@ -261,8 +295,22 @@ class MeshErrorEvaluator(BasePoseEvaluator):
         pose_t, shape_t, _ = self._preprocess(pose_t, shape_t)
         _, joint_p, mesh_p = self.model.forward_kinematics(pose_p, shape_p, calc_mesh=True)
         _, joint_t, mesh_t = self.model.forward_kinematics(pose_t, shape_t, calc_mesh=True)
-        offset_from_p_to_t = (joint_t[:, self.align_joint] - joint_p[:, self.align_joint]).unsqueeze(1)
-        mesh_error = (mesh_p + offset_from_p_to_t - mesh_t).norm(dim=2).mean()
+        if self.align_joint >= 0:
+            offset_from_p_to_t = (joint_t[:, self.align_joint] - joint_p[:, self.align_joint]).unsqueeze(1)
+            mesh_p = mesh_p + offset_from_p_to_t
+        elif self.align_joint == -1:
+            mesh_p = svd_rotate(mesh_p, mesh_t, calc_R=True, calc_t=True, calc_s=True)[3]
+        elif self.align_joint == -2:
+            mesh_p = svd_rotate(mesh_p, mesh_t, calc_R=True, calc_t=True, calc_s=False)[3]
+        elif self.align_joint == -3:
+            mesh_p = svd_rotate(mesh_p, mesh_t, calc_R=False, calc_t=True, calc_s=True)[3]
+        elif self.align_joint == -4:
+            mesh_p = svd_rotate(mesh_p, mesh_t, calc_R=False, calc_t=True, calc_s=False)[3]
+        elif self.align_joint == -5:
+            mesh_p = svd_rotate(mesh_p, mesh_t, calc_R=False, calc_t=False, calc_s=True)[3]
+        else:
+            raise RuntimeError('Undefined align_joint=%d' % self.align_joint)
+        mesh_error = (mesh_p - mesh_t).norm(dim=2).mean()
         return mesh_error
 
 
@@ -270,13 +318,13 @@ class FullMotionEvaluator(BasePoseEvaluator):
     r"""
     Evaluator for full motions (pose sequences with global translations). Plenty of metrics.
     """
-    def __init__(self, official_model_file: str, align_joint=None, rep=RotationRepresentation.ROTATION_MATRIX,
+    def __init__(self, official_model_file: str, align_joint=0, rep=RotationRepresentation.ROTATION_MATRIX,
                  use_pose_blendshape=False, fps=60, joint_mask=None, device=torch.device('cpu')):
         r"""
         Init a full motion evaluator.
 
         :param official_model_file: Path to the official SMPL/MANO/SMPLH model to be loaded.
-        :param align_joint: Which joint to align. (e.g. SMPLJoint.ROOT). By default the root.
+        :param align_joint: Which joint to align. (e.g. SMPLJoint.ROOT). By default the root. Non-negative.
         :param rep: The rotation representation used in the input poses.
         :param use_pose_blendshape: Whether to use pose blendshape or not.
         :param joint_mask: If not None, local angle error, global angle error, and joint position error
@@ -285,7 +333,7 @@ class FullMotionEvaluator(BasePoseEvaluator):
         :param device: torch.device, cpu or cuda.
         """
         super(FullMotionEvaluator, self).__init__(official_model_file, rep, use_pose_blendshape, device=device)
-        self.align_joint = 0 if align_joint is None else align_joint.value
+        self.align_joint = align_joint if isinstance(align_joint, int) else align_joint.value
         self.fps = fps
         self.joint_mask = joint_mask
 
