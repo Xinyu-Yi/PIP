@@ -84,6 +84,19 @@ The authors are too busy to clean up/rewrite the codes. Here are some useful tip
 
 - The hyperparameters for the physics optimization are all in `physics_parameters.json`.  If you set `debug=True`, you can adjust these parameters interactively in the pybullet window.
 
+## Live Demo
+
+### Configuration
+
+In `config.py`, set `temp_dir` and `live_record_dir` for output files. Set `unity_file` to the built unity executable file (Leave it empty if you do not have one).
+
+### Run Live Demo with Xsens Dots
+
+1. Modify the sensor bluetooth address in `articulate/utils/executables/xsens_dot_server.py`. Then, run the Xsens server `xsens_dot_server.py`. If you do not need the server GUI, run `xsens_dot_server_no_gui.py` instead. The no-GUI version is much more stable than the GUI version and highly recommended. The live demo needs 6 IMUs.
+2. If you use the GUI server, click the "connect" button. Then, click "start streaming" and "clear". Then, align the sensors and click "reset heading". If you use the no-GUI server, press shift+L to unlock. Then, press C to connect, S to start streaming, and then align the sensor and press A. Press D to check the alignment. Finally, press L to lock the hotkey.
+
+3. Run `live_demo_xsens_client.py` and perform the calibration as instructed in the command line. Finally, press Q to quit.
+
 ## Citation
 
 If you find the project helpful, please consider citing us:

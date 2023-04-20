@@ -23,12 +23,15 @@ class paths:
     totalcapture_dir = 'data/dataset_work/TotalCapture'          # output path for the preprocessed TotalCapture dataset
 
     result_dir = 'data/result'                      # output directory for the evaluation results
+    temp_dir = 'data/temp'                          # temp directory
+    live_record_dir = 'data/record'                 # output directory for live recordings
 
     smpl_file = 'models/SMPL_male.pkl'              # official SMPL model path
     physics_model_file = 'models/physics.urdf'      # physics body model path
     plane_file = 'models/plane.urdf'                # (for debug) path to plane.urdf    Please put plane.obj next to it.
     weights_file = 'data/weights.pt'                # network weight file
     physics_parameter_file = 'physics_parameters.json'   # physics hyperparameters
+    unity_file = ''                                 # unity build executable file
 
 
 class joint_set:

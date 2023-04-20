@@ -220,11 +220,15 @@ class PhysicsOptimizer:
         q_ = np.concatenate((-np.dot(As1.T, bs1), -np.dot(As2.T, bs2), -np.dot(As3.T, bs3)))
 
         # fast solvers are less accurate/robust, and may fail
-        init = self.last_x if len(self.last_x) == len(q_) else None
+        init = self.last_x if False and len(self.last_x) == len(q_) else None
         x = solve_qp(P_, q_, G_, h_, A_, b_, solver='quadprog', initvals=init)
 
+        # if x is None or np.linalg.norm(x) > 10000:
+        #     x = solve_qp(P_, q_, G_, h_, A_, b_, solver='cvxopt', initvals=init)
+
         if x is None or np.linalg.norm(x) > 10000:
-            x = solve_qp(P_, q_, G_, h_, A_, b_, solver='cvxopt', initvals=init)
+            print('Warning: QP infeasible. Ignoring Gx <= h constraints')
+            x = solve_qp(P_, q_, None, None, A_, b_, solver='quadprog', initvals=init)
 
         qddot = x[:self.model.qdot_size]
         GRF = x[self.model.qdot_size:-self.model.qdot_size]

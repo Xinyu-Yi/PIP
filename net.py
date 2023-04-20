@@ -1,9 +1,10 @@
-from torch.nn.utils.rnn import *
+import torch
 import articulate as art
 from articulate.utils.torch import *
 from config import *
 from utils import *
 from dynamics import PhysicsOptimizer
+from torch.nn.functional import relu
 
 
 class PIP(torch.nn.Module):
@@ -98,3 +99,37 @@ class PIP(torch.nn.Module):
             tran_opt.append(t)
         pose_opt, tran_opt = torch.stack(pose_opt), torch.stack(tran_opt)
         return pose_opt, tran_opt
+
+    @torch.no_grad()
+    def forward_frame(self, glb_acc, glb_rot):
+        r"""
+        Forward. Currently only support 1 subject.
+
+        :param glb_acc: A tensor in [num_subjects, 6, 3].
+        :param glb_rot: A tensor in [num_subjects, 6, 3, 3].
+        """
+        imu = normalize_and_concat(glb_acc, glb_rot)
+
+        x, self.rnn_states[0] = self.rnn1.rnn(relu(self.rnn1.linear1(imu), inplace=True).unsqueeze(0), self.rnn_states[0])
+        x = self.rnn1.linear2(x[0])
+        x = torch.cat([x, imu], dim=1)
+
+        x, self.rnn_states[1] = self.rnn2.rnn(relu(self.rnn2.linear1(x), inplace=True).unsqueeze(0), self.rnn_states[1])
+        x = self.rnn2.linear2(x[0])
+        x = torch.cat([x, imu], dim=1)
+
+        x1, self.rnn_states[2] = self.rnn3.rnn(relu(self.rnn3.linear1(x), inplace=True).unsqueeze(0), self.rnn_states[2])
+        global_6d_pose = self.rnn3.linear2(x1[0])
+
+        x1, self.rnn_states[3] = self.rnn4.rnn(relu(self.rnn4.linear1(x), inplace=True).unsqueeze(0), self.rnn_states[3])
+        joint_velocity = self.rnn4.linear2(x1[0])
+
+        x1, self.rnn_states[4] = self.rnn5.rnn(relu(self.rnn5.linear1(x), inplace=True).unsqueeze(0), self.rnn_states[4])
+        contact = self.rnn5.linear2(x1[0])
+
+        pose = self._reduced_glb_6d_to_full_local_mat(glb_rot[:, -1].cpu(), global_6d_pose.cpu())
+        joint_velocity = (joint_velocity.view(-1, 24, 3).bmm(glb_rot[:, -1].transpose(1, 2)) * vel_scale).cpu()
+
+        # TODO: multiple people
+        p, t = self.dynamics_optimizer.optimize_frame(pose[0], joint_velocity[0], contact[0].cpu(), glb_acc.cpu())
+        return p, t
