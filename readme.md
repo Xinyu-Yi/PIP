@@ -86,16 +86,28 @@ The authors are too busy to clean up/rewrite the codes. Here are some useful tip
 
 ## Live Demo
 
-### Configuration
+### Prerequisites and configuration
 
-In `config.py`, set `temp_dir` and `live_record_dir` for output files. Set `unity_file` to the built unity executable file (Leave it empty if you do not have one).
+Install the additional prerequisites:
+
+```
+pip install pywin32 keyboard bleak
+```
+
+In `config.py`, set `temp_dir` and `live_record_dir` for output files. Set `unity_file` to the built unity executable file (Leave it empty if you want to directly run the scene in Unity3D).
+
+We provide a minimal example unity scene for live demo visualization. Download the unity package from [here](https://xinyu-yi.github.io/TransPose/files/visualizer.unitypackage), load the package in Unity3D (>=2019.4.16), and open the `Example` scene.
 
 ### Run Live Demo with Xsens Dots
 
-1. Modify the sensor bluetooth address in `articulate/utils/executables/xsens_dot_server.py`. Then, run the Xsens server `xsens_dot_server.py`. If you do not need the server GUI, run `xsens_dot_server_no_gui.py` instead. The no-GUI version is much more stable than the GUI version and highly recommended. The live demo needs 6 IMUs.
+1. Modify the sensor bluetooth address in `articulate/utils/executables/xsens_dot_server.py`. Then, run the Xsens server `xsens_dot_server.py`. If you do not need the server GUI, run `xsens_dot_server_no_gui.py` instead. The no-GUI version is much more stable and faster than the GUI version and is highly recommended. Note that the live demo needs 6 IMUs.
 2. If you use the GUI server, click the "connect" button. Then, click "start streaming" and "clear". Then, align the sensors and click "reset heading". If you use the no-GUI server, press shift+L to unlock. Then, press C to connect, S to start streaming, and then align the sensor and press A. Press D to check the alignment. Finally, press L to lock the hotkey.
 
-3. Run `live_demo_xsens_client.py` and perform the calibration as instructed in the command line. Finally, press Q to quit.
+3. Run `live_demo_xsens.py`. If you did not set the executable file path, run the live demo scene in Unity3D directly by clicking the play button. Then, switch to the python and perform the calibration as instructed in the command line. Then, the capture will start.
+
+### Run Live Demo with Noitom IMUs (recommended)
+
+TBD
 
 ## Citation
 

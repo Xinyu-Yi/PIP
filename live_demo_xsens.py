@@ -69,12 +69,14 @@ if __name__ == '__main__':
     os.makedirs(paths.temp_dir, exist_ok=True)
     os.makedirs(paths.live_record_dir, exist_ok=True)
 
+    is_executable = False
     server_for_unity = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_for_unity.bind(('127.0.0.1', 8888))
     server_for_unity.listen(1)
     print('Server start. Waiting for unity3d to connect.')
-    if False and os.path.exists(paths.unity_file):
+    if paths.unity_file != '' and os.path.exists(paths.unity_file):
         win32api.ShellExecute(0, 'open', os.path.abspath(paths.unity_file), '', '', 1)
+        is_executable = True
     conn, addr = server_for_unity.accept()
 
     imu_set = IMUSet()
@@ -96,20 +98,23 @@ if __name__ == '__main__':
         # send pose
         s = ','.join(['%g' % v for v in pose.view(-1)]) + '#' + \
             ','.join(['%g' % v for v in tran.view(-1)]) + '$'
-        conn.send(s.encode('utf8'))
+        try:
+            conn.send(s.encode('utf8'))
+        except:
+            break
 
         data['aM'].append(aM)
         data['RMB'].append(RMB)
 
-        if keyboard.is_pressed('q'):
+        if is_executable and keyboard.is_pressed('q'):
             break
 
         print('\rfps: ', clock.get_fps(), end='')
 
-    if os.path.exists(paths.unity_file):
+    if is_executable:
         os.system('taskkill /F /IM "%s"' % os.path.basename(paths.unity_file))
 
     data['aM'] = torch.stack(data['aM'])
     data['RMB'] = torch.stack(data['RMB'])
     torch.save(data, os.path.join(paths.live_record_dir, 'xsens' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.pt'))
-    print('Finish.')
+    print('\rFinish.')
