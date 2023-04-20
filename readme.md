@@ -57,6 +57,10 @@ python evaluate.py
 
 The pose/translation evaluation results for DIP-IMU and TotalCapture test datasets will be printed/drawn.
 
+### Live Demo
+
+The live demo codes are on the `livedemo` branch. Please checkout this branch.
+
 ### About the codes
 
 The authors are too busy to clean up/rewrite the codes. Here are some useful tips:
