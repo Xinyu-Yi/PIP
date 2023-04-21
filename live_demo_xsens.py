@@ -91,13 +91,16 @@ if __name__ == '__main__':
         tframe, q, a = imu_set.get()
         RMB = RMI.matmul(art.math.quaternion_to_rotation_matrix(q)).matmul(RSB)
         aM = a.mm(RMI.t())
-        pose, tran = net.forward_frame(aM.view(1, 6, 3), RMB.view(1, 6, 3, 3))
+        pose, tran, cj, grf = net.forward_frame(aM.view(1, 6, 3), RMB.view(1, 6, 3, 3), return_grf=True)
         pose = art.math.rotation_matrix_to_axis_angle(pose).view(-1, 72)
         tran = tran.view(-1, 3)
 
-        # send pose
+        # send motion to Unity
         s = ','.join(['%g' % v for v in pose.view(-1)]) + '#' + \
-            ','.join(['%g' % v for v in tran.view(-1)]) + '$'
+            ','.join(['%g' % v for v in tran.view(-1)]) + '#' + \
+            ','.join(['%d' % v for v in cj]) + '#' + \
+            (','.join(['%g' % v for v in grf.view(-1)]) if grf is not None else '') + '$'
+
         try:
             conn.send(s.encode('utf8'))
         except:

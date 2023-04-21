@@ -4,3 +4,4 @@ data/*
 !data/figures
 models/
 __pycache__/
+readme_yxy.txt

@@ -101,12 +101,15 @@ class PIP(torch.nn.Module):
         return pose_opt, tran_opt
 
     @torch.no_grad()
-    def forward_frame(self, glb_acc, glb_rot):
+    def forward_frame(self, glb_acc, glb_rot, return_grf=False):
         r"""
         Forward. Currently only support 1 subject.
 
         :param glb_acc: A tensor in [num_subjects, 6, 3].
         :param glb_rot: A tensor in [num_subjects, 6, 3, 3].
+        :param return_grf: Whether to return ground reaction force.
+        :return: If return_grf is False, return (pose, translation).
+                 If return_grf is True, return (pose, translation, collision_joints, contact_forces).
         """
         imu = normalize_and_concat(glb_acc, glb_rot)
 
@@ -131,5 +134,4 @@ class PIP(torch.nn.Module):
         joint_velocity = (joint_velocity.view(-1, 24, 3).bmm(glb_rot[:, -1].transpose(1, 2)) * vel_scale).cpu()
 
         # TODO: multiple people
-        p, t = self.dynamics_optimizer.optimize_frame(pose[0], joint_velocity[0], contact[0].cpu(), glb_acc.cpu())
-        return p, t
+        return self.dynamics_optimizer.optimize_frame(pose[0], joint_velocity[0], contact[0].cpu(), glb_acc.cpu(), return_grf=return_grf)
