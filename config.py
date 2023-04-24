@@ -32,6 +32,7 @@ class paths:
     weights_file = 'data/weights.pt'                # network weight file
     physics_parameter_file = 'physics_parameters.json'   # physics hyperparameters
     unity_file = ''                                 # unity build executable file
+    # unity_file = r'C:\yxy\projects\Unity\_Builds\Mocap Live Demo\Mocap Live Demo.exe'    # unity build executable file
 
 
 class joint_set:
