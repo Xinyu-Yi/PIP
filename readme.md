@@ -105,6 +105,10 @@ We provide a minimal example unity scene for live demo visualization. Download t
 
 3. Run `live_demo_xsens.py`. If you did not set the executable file path, run the live demo scene in Unity3D directly by clicking the play button. Then, switch to the python and perform the calibration as instructed in the command line. Then, the capture will start.
 
+*[Author]: In our experiment, Xsens Dot needs frequent heading reset during the live demo (~once every 5 minute) as it has large orientation drifts. We think Notiom sensor is more stable in our case, where we test ~30 minutes and it can perform well with little orientation drift (as shown in the video).*
+
+***[Bug 2023-04-26]: After the heading reset, Xsens dots generate inconsistent acceleration measurements (it seems that the global frame of different sensors is changed differently). This will lead to poor performance of the live demo.***
+
 ### Run Live Demo with Noitom IMUs (recommended)
 
 TBD
