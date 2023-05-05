@@ -109,9 +109,10 @@ We provide a minimal example unity scene for live demo visualization. Download t
 
 ***[Bug 2023-04-26]: After the heading reset, Xsens dots generate inconsistent acceleration measurements (it seems that the global frame of different sensors is changed differently). This will lead to poor performance of the live demo.***
 
-### Run Live Demo with Noitom IMUs (recommended)
+### Run Live Demo with Noitom Lab IMUs (recommended)
 
-TBD
+1. Run Notiom Axis Lab and send the real-time measurements to the udp port 7777.
+2. Run `live_demo_noitom.py`. If you did not set the executable file path, run the live demo scene in Unity3D directly by clicking the play button. Then, switch to the python and perform the calibration as instructed in the command line. Then, the capture will start.
 
 ## Citation
 
