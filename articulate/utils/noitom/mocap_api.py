@@ -994,12 +994,7 @@ class MCPApplication(object):
         return [MCPSensorModule(sensor_handles[i]) for i in range(sensor_count.value)]
 
     def poll_next_event(self):
-        evt_count = c_uint32(0)
-        err = self.api.contents.PollApplicationNextEvent(POINTER(MCPEvent)(), pointer(evt_count), self._handle)
-        if err != MCPError.NoError:
-            raise RuntimeError('Can not poll application event count: {0}'.format(MCPError._fields[err]))
-        if evt_count.value == 0:
-            return []
+        evt_count = c_uint32(32)
         evt_array = (MCPEvent * evt_count.value)()
         for i in range(evt_count.value):
             evt_array[i].size = sizeof(MCPEvent)
