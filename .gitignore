@@ -4,3 +4,6 @@ data/*
 !data/figures
 models/
 __pycache__/
+readme_yxy.txt
+carticulate/
+test_purpose/
